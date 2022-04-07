@@ -26,6 +26,7 @@
 #include <QtCore/QJsonValue>
 #include "apploader.h"
 #include <QDebug>
+#include <QDir>
 
 #if defined(SMACK_ENABLED)
 #include <QCryptographicHash>
@@ -190,6 +191,20 @@ bool AppLoader::loadApplication(const QString &appId, const QString &mainQml, co
     }
 
     m_engine.rootContext()->setContextProperty("params", params);
+
+    /* look for an appinfo.json in the parent folders of the qml file, and add that folder as a QML import path */
+    QDir qmlDir =  QFileInfo(QUrl(mainQml).toLocalFile()).absoluteDir();
+    QString applicationBasePath = qmlDir.absolutePath();
+    while(!qmlDir.isRoot()) {
+        if(qmlDir.exists("appinfo.json")) {
+            applicationBasePath = qmlDir.absolutePath();
+            break;
+        }
+        qmlDir = QDir(qmlDir.absolutePath() + "/..");
+        qmlDir.makeAbsolute();
+    }
+    m_engine.addImportPath(applicationBasePath);
+    qDebug() << "Added QML ImportPath " << applicationBasePath;
 
     // APP_ID envvar is used in multiple places, e.g WebOSQuickWindow and Service plugins.
     if (!appId.isEmpty()) {
