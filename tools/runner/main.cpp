@@ -129,6 +129,11 @@ int main(int argc, char *argv[])
         qputenv("WEBOS_DEVICE_PIXEL_RATIO", QByteArray("auto"));
         qDebug("Set default WEBOS_DEVICE_PIXEL_RATIO as 'auto'");
     }
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
+        // Set "webos-wayland" by default
+        qputenv("QT_QPA_PLATFORM", QByteArray("webos-wayland"));
+        qDebug("Set default QT_QPA_PLATFORM as 'webos-wayland'");
+    }
 
     QGuiApplication app(argc, argv);
     QString mainQml("");
