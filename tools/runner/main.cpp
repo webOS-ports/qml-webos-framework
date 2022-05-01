@@ -119,11 +119,6 @@ int main(int argc, char *argv[])
 #endif
     qputenv("QV4_NO_SSA", "1");
 
-    if (qEnvironmentVariableIsEmpty("WEBOS_WINDOW_BASE_GEOMETRY")) {
-        // Set "1920x1080" by default
-        qputenv("WEBOS_WINDOW_BASE_GEOMETRY", QByteArray("1920x1080"));
-        qDebug("Set default WEBOS_WINDOW_BASE_GEOMETRY as '1920x1080'");
-    }
     if (qEnvironmentVariableIsEmpty("WEBOS_DEVICE_PIXEL_RATIO")) {
         // Set "auto" by default
         qputenv("WEBOS_DEVICE_PIXEL_RATIO", QByteArray("auto"));
