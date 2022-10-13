@@ -38,8 +38,8 @@ AppLoader::AppLoader (QObject * parent)
     : QObject (parent),
       m_component (new QQmlComponent(&m_engine, nullptr))
 {
-    QObject::connect(&m_engine, &QQmlEngine::quit,
-                     QCoreApplication::instance(), &QCoreApplication::quit);
+    QObject::connect(&m_engine, SIGNAL(quit()),
+                     QCoreApplication::instance(), SLOT(quit()));
 }
 
 AppLoader::~AppLoader()
