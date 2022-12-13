@@ -1,6 +1,7 @@
 {
     \"exeName\":\"$$WEBOS_INSTALL_BINS/qml-runner\",
     \"type\": \"privileged\",
+    \"trustLevel\": \"oem\",
     \"allowedNames\": [\"com.webos.app.qmlrunner-*\", \"com.webos.media.client.*\", \"\"],
     \"permissions\": [
         {
