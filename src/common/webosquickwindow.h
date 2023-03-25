@@ -158,6 +158,7 @@ public:
     bool cursorVisible() { return m_cursorVisible; }
 
     QObject *windowProperties() { return &m_windowProperties; }
+    Q_INVOKABLE void setWindowProperty(const QString& key, const QString& value);
 
     /*!
      * The parent class function is not virtual and we need to signal the
@@ -219,7 +220,6 @@ private:
     WebOSShellSurface* shellSurface();
 #endif
 
-    void setWindowProperty(const QString& key, const QString& value);
     QPoint m_mousePosition;
 
     bool m_keepAlive;
