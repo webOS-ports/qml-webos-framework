@@ -21,6 +21,6 @@ include(../runner/runner.pri)
 
 CONFIG += qml_debug
 
-target.path = $$WEBOS_INSTALL_WEBOS_SDKDIR/bin
+target.path = $$WEBOS_INSTALL_BINS
 
 INSTALLS += target
