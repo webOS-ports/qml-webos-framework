@@ -57,7 +57,7 @@ WebOSQuickWindow::WebOSQuickWindow(QWindow *parent)
     QObject::connect(this, &WebOSQuickWindow::visibleChanged,
                      this, &WebOSQuickWindow::updatePendingWindowProperties);
 
-    const QString &id = QCoreApplication::applicationName();
+    const QString id = qEnvironmentVariable("APP_ID", QCoreApplication::applicationName());
     m_windowProperties.insert(WP_APPID, id);
     setWindowProperty(WP_APPID, id);
 
