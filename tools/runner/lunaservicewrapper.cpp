@@ -117,17 +117,26 @@ void LunaServiceWrapper::subscribe()
 
     LSError lsError;
     LSErrorInit(&lsError);
-    if (LSCallFromApplication(lunaHandle,
-                              ("luna://" + m_serviceId + "/" + m_method).toLatin1(),
-                              param.toLatin1(),
-                              m_appId.toLatin1(),
-                              (LSFilterFunc) staticCallbackFunc,
-                              this,
-                              &m_token,
-                              &lsError)) {
+    // Plain LSCall, not LSCallFromApplication: the handle is already an
+    // application service registered for this appId, so the hub knows who is
+    // calling and attaches the identity itself. Passing the appId a second
+    // time asks luna-service2 to speak *for* an application, which only a
+    // privileged connection may do - and since the runner started registering
+    // by appId the hub resolves the app's own role, which is "regular". Every
+    // subscribe then failed with -1031, registerServerStatus included, so the
+    // runner never got as far as subscribing to registerApp. SAM saw an
+    // unregistered app and answered a relaunch by killing and restarting it
+    // instead of delivering the event: opening the app menu restarted the app.
+    if (LSCall(lunaHandle,
+               ("luna://" + m_serviceId + "/" + m_method).toLatin1(),
+               param.toLatin1(),
+               (LSFilterFunc) staticCallbackFunc,
+               this,
+               &m_token,
+               &lsError)) {
         m_isSubscribed = true;
     } else {
-        qWarning() << "Failed to LSCallFromApplication:"
+        qWarning() << "Failed to LSCall:"
                    << lsError.error_code << lsError.message;
     }
 }
