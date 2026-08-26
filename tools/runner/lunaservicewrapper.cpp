@@ -92,7 +92,7 @@ void LunaServiceWrapper::regist()
         ls2ServiceName = ls2Name;
 
     qInfo() << "LS2_NAME:" << ls2ServiceName << ", ls2ServiceName:" << ls2ServiceName;
-    if (!LSRegister(ls2ServiceName.toLatin1(), &lunaHandle, &lsError))
+    if (!LSRegisterApplicationService(ls2ServiceName.toLatin1(), m_appId.toLatin1(), &lunaHandle, &lsError))
         qWarning() << "LSRegister error:" << lsError.error_code << lsError.message;
 }
 
