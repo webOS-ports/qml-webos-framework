@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2020 LG Electronics, Inc.
+# Copyright (c) 2026 LG Electronics, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-TEMPLATE = subdirs
-SUBDIRS = launcher \
-    auto/framework \
-    stress
+TEMPLATE = aux
+
+OTHER_FILES += qml-runner-stress.sh
+
+!no_webos_platform {
+    load(webos-variables)
+    stress.files = qml-runner-stress.sh
+    stress.path = $$WEBOS_INSTALL_DATADIR/booster/tests
+    stress.CONFIG += executable
+    INSTALLS += stress
+}
