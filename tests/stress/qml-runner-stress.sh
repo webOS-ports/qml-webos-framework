@@ -46,8 +46,11 @@ rss_first=0
 rss_last=0
 
 app_pid() {
-    # qml-runner sets its command line to the launch JSON; match the app id.
-    pgrep -f "qml-runner.*$APP_ID" | head -n1
+    # The runner's command line is "/usr/bin/qml-runner --appid <id> ...".
+    # Anchor on the executable so we never match this script itself (its
+    # own command line also contains both "qml-runner" and the app id),
+    # and filter our own pid out for good measure.
+    pgrep -f "^/usr/bin/qml-runner .*$APP_ID" | grep -v "^$$\$" | head -n1
 }
 
 app_rss() {
