@@ -37,7 +37,7 @@ public:
         return &SolidBeziergonShader::type;
     };
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    virtual QSGMaterialShader *createShader(QSGRendererInterface::RenderMode renderMode) const override
+    virtual QSGMaterialShader *createShader(QSGRendererInterface::RenderMode) const override
 #else
     virtual QSGMaterialShader *createShader() const override
 #endif
@@ -55,7 +55,7 @@ public:
     return &SampledBeziergonShader::type;
     };
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    virtual QSGMaterialShader *createShader(QSGRendererInterface::RenderMode renderMode) const override
+    virtual QSGMaterialShader *createShader(QSGRendererInterface::RenderMode) const override
 #else
     virtual QSGMaterialShader *createShader() const override
 #endif
@@ -73,7 +73,7 @@ public:
     return &SimpleSampledBeziergonShader::type;
     };
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    virtual QSGMaterialShader *createShader(QSGRendererInterface::RenderMode renderMode) const override
+    virtual QSGMaterialShader *createShader(QSGRendererInterface::RenderMode) const override
 #else
     virtual QSGMaterialShader *createShader() const override
 #endif
@@ -422,7 +422,6 @@ QSGGeometry* Beziergon::generateFringeGeometry(QSGGeometry* old) {
     int iindex = 0;
     int vindex = 0;
 
-    printf("\n");
     float vx, vy;
 
     // top (y==0) and bottom(y==1) edges, each looking like this:

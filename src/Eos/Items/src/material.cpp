@@ -20,6 +20,7 @@
 #include <QSGTextureProvider>
 #include <QDebug>
 #include <QOpenGLFunctions>
+#include <functional>
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QOpenGLShaderProgram>
 #endif
@@ -47,8 +48,8 @@ bool SolidShader::updateUniformData(QSGMaterialShader::RenderState &state,
     return true;
 }
 
-void SolidShader::updateSampledImage(QSGMaterialShader::RenderState &state,
-                        int binding, QSGTexture **ppTexture, QSGMaterial *newMaterial, QSGMaterial *oldMaterial)
+void SolidShader::updateSampledImage(QSGMaterialShader::RenderState &,
+                        int /*binding*/, QSGTexture **ppTexture, QSGMaterial *newMaterial, QSGMaterial * /*oldMaterial*/)
 {
     SampledMaterial* mat = static_cast<SampledMaterial*>(newMaterial);
     QSGTextureProvider* tp = mat->textureProvider();
@@ -229,15 +230,22 @@ SolidMaterial::~SolidMaterial() {
 }
 
 QSGMaterialType *SolidMaterial::type() const {
-    return &SolidShader::type;;
+    return &SolidShader::type;
 }
 
 int SolidMaterial::compare(const QSGMaterial *other) const {
-    return this - dynamic_cast<const SolidMaterial *>(other);
+    // The previous implementation returned the raw pointer difference,
+    // which truncates to int on 64-bit targets (two distinct materials
+    // could compare equal and get batched together) and is undefined for
+    // unrelated allocations. Order by address via std::less, which is
+    // guaranteed to give a total order over pointers.
+    if (this == other)
+        return 0;
+    return std::less<const QSGMaterial *>()(this, other) ? -1 : 1;
 }
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-QSGMaterialShader *SolidMaterial::createShader(QSGRendererInterface::RenderMode renderMode) const
+QSGMaterialShader *SolidMaterial::createShader(QSGRendererInterface::RenderMode) const
 #else
 QSGMaterialShader *SolidMaterial::createShader() const
 #endif
@@ -254,6 +262,8 @@ SampledMaterial::~SampledMaterial() {
 }
 
 void SampledMaterial::updateTextureProvider() const {
+    if (!m_textureProvider)
+        return;
     if (QSGDynamicTexture *texture = qobject_cast<QSGDynamicTexture *>(m_textureProvider->texture()))
         texture->updateTexture();
 }
@@ -263,7 +273,7 @@ QSGMaterialType *SampledMaterial::type() const {
 }
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-QSGMaterialShader *SampledMaterial::createShader(QSGRendererInterface::RenderMode renderMode) const
+QSGMaterialShader *SampledMaterial::createShader(QSGRendererInterface::RenderMode) const
 #else
 QSGMaterialShader *SampledMaterial::createShader() const
 #endif
@@ -302,7 +312,7 @@ QSGMaterialType *SimpleSampledMaterial::type() const {
 }
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-QSGMaterialShader *SimpleSampledMaterial::createShader(QSGRendererInterface::RenderMode renderMode) const
+QSGMaterialShader *SimpleSampledMaterial::createShader(QSGRendererInterface::RenderMode) const
 #else
 QSGMaterialShader *SimpleSampledMaterial::createShader() const
 #endif

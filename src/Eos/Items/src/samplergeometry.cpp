@@ -195,16 +195,20 @@ QSGNode* Item::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
 
         updateSolidMaterial(node->body());
         updateSampledMaterial(node->body());
-        node->body()->solidMaterial()->setFlag(QSGMaterial::Blending, m_blending);
-        node->body()->sampledMaterial()->setFlag(QSGMaterial::Blending, m_blending);
+        if (node->body()->solidMaterial())
+            node->body()->solidMaterial()->setFlag(QSGMaterial::Blending, m_blending);
+        if (node->body()->sampledMaterial())
+            node->body()->sampledMaterial()->setFlag(QSGMaterial::Blending, m_blending);
         node->body()->markDirty(QSGNode::DirtyMaterial);
 
         if(m_antialiasing) {
             if(!node->fringe()) qFatal("should have fringe!");
             updateSolidMaterial(node->fringe());
             updateSampledMaterial(node->fringe());
-            node->fringe()->sampledMaterial()->setFlag(QSGMaterial::Blending, true);
-            node->fringe()->solidMaterial()->setFlag(QSGMaterial::Blending, true);
+            if (node->fringe()->sampledMaterial())
+                node->fringe()->sampledMaterial()->setFlag(QSGMaterial::Blending, true);
+            if (node->fringe()->solidMaterial())
+                node->fringe()->solidMaterial()->setFlag(QSGMaterial::Blending, true);
             node->fringe()->markDirty(QSGNode::DirtyMaterial);
         }
     }
@@ -213,6 +217,8 @@ QSGNode* Item::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
 
 void Item::updateSampledMaterial(GeometryNode* node) {
     SampledMaterial* mat = node->sampledMaterial();
+    if (!mat)
+        return;
     mat->m_color = m_color;
     mat->m_dest = m_dest;
 
@@ -281,6 +287,8 @@ void Item::updateSampledMaterial(GeometryNode* node) {
 
 void Item::updateSolidMaterial(GeometryNode* node) {
     SolidMaterial* mat = node->solidMaterial();
+    if (!mat)
+        return;
     mat->m_color = m_color;
 }
 
@@ -327,12 +335,15 @@ void GeometryNode::sourceProviderDestroyed(QObject* object) {
 }
 
 void GeometryNode::setSolidMaterial(SolidMaterial* mat) {
+    // A null material can legitimately arrive here (e.g. the item's
+    // factory bailing out); never install it as the active material.
     if(mat != m_solidMaterial) {
-        if(material() == m_solidMaterial)
+        if(mat && material() == m_solidMaterial)
             setMaterial(mat);
         delete m_solidMaterial;
 
-        mat->setFlag(QSGMaterial::RequiresFullMatrix);
+        if(mat)
+            mat->setFlag(QSGMaterial::RequiresFullMatrix);
         m_solidMaterial = mat;
         markDirty(DirtyMaterial);
     }
@@ -340,10 +351,11 @@ void GeometryNode::setSolidMaterial(SolidMaterial* mat) {
 
 void GeometryNode::setSampledMaterial(SampledMaterial* mat) {
     if(mat != m_sampledMaterial) {
-        if(material() == m_sampledMaterial)
+        if(mat && material() == m_sampledMaterial)
             setMaterial(mat);
         delete m_sampledMaterial;
-        mat->setFlag(QSGMaterial::RequiresFullMatrix);
+        if(mat)
+            mat->setFlag(QSGMaterial::RequiresFullMatrix);
         m_sampledMaterial = mat;
         markDirty(DirtyMaterial);
     }
