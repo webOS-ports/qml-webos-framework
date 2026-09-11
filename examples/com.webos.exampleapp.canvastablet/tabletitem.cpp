@@ -43,6 +43,8 @@ bool TabletItem::event(QEvent *event)
         setValues(static_cast<QTabletEvent *>(event));
         emit released();
         return true;
+    default:
+        break;
     }
     return QQuickItem::event(event);
 }
@@ -55,12 +57,21 @@ void TabletItem::touchEvent(QTouchEvent *event)
 
 void TabletItem::setTouchValues(QTouchEvent *event)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    const QList<QEventPoint> touchPoints = event->points();
+    if (touchPoints.isEmpty())
+        return;
+
+    m_xTouch = touchPoints[0].globalPosition().x();
+    m_yTouch = touchPoints[0].globalPosition().y();
+#else
     QList<QTouchEvent::TouchPoint> touchPoints = event->touchPoints();
     if (touchPoints.isEmpty())
         return;
 
     m_xTouch = touchPoints[0].screenPos().x();
     m_yTouch = touchPoints[0].screenPos().y();
+#endif
     switch (event->type()) {
     case QEvent::TouchBegin:
         m_eventType = "TouchBegin";
@@ -71,18 +82,26 @@ void TabletItem::setTouchValues(QTouchEvent *event)
     case QEvent::TouchEnd:
         m_eventType = "TouchEnd";
         break;
+    default:
+        break;
     }
 }
 
 void TabletItem::setValues(QTabletEvent *event)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    m_id = event->pointingDevice() ? event->pointingDevice()->uniqueId().numericId() : 0;
+    m_pos = event->position();
+    m_uniqueId = event->pointingDevice() ? event->pointingDevice()->uniqueId().numericId() : 0;
+#else
     m_id = event->uniqueId();
     m_pos = event->pos();
+    m_uniqueId = event->uniqueId();
+#endif
     m_z = event->z();
     m_xTilt = event->xTilt();
     m_yTilt = event->yTilt();
     m_pressure = event->pressure();
-    m_uniqueId = event->uniqueId();
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     switch (event->deviceType()) {
