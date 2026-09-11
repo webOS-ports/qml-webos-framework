@@ -22,6 +22,7 @@
 #   - memory growth of the app process across relaunch cycles
 #
 # Usage: qml-runner-stress.sh [-a app-id] [-n iterations] [-r relaunches]
+#                              [-s settle-seconds]
 #
 # Exit code: 0 if every iteration launched, survived its relaunches and
 # closed on request; 1 otherwise.
@@ -29,14 +30,16 @@
 APP_ID="com.palm.app.settings"
 ITERATIONS=25
 RELAUNCHES=4
+SETTLE=5
 SAM="luna://com.webos.service.applicationmanager"
 
-while getopts "a:n:r:h" opt; do
+while getopts "a:n:r:s:h" opt; do
     case $opt in
         a) APP_ID="$OPTARG" ;;
         n) ITERATIONS="$OPTARG" ;;
         r) RELAUNCHES="$OPTARG" ;;
-        h|*) echo "Usage: $0 [-a app-id] [-n iterations] [-r relaunches]"; exit 0 ;;
+        s) SETTLE="$OPTARG" ;;
+        h|*) echo "Usage: $0 [-a app-id] [-n iterations] [-r relaunches] [-s settle-seconds]"; exit 0 ;;
     esac
 done
 
@@ -92,6 +95,12 @@ while [ "$n" -le "$ITERATIONS" ]; do
     rss=$(app_rss)
     [ "$rss_first" = 0 ] && rss_first=$rss
     printf ' pid=%s rss=%skB' "$pid" "$rss"
+
+    # Give the app time to finish its registerApp subscription with SAM;
+    # a relaunch that arrives before registration completes is answered
+    # with a kill-and-restart by design, which is not what we are
+    # trying to measure here.
+    sleep "$SETTLE"
 
     r=1
     while [ "$r" -le "$RELAUNCHES" ]; do
