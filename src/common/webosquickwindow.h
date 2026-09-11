@@ -33,6 +33,18 @@
 
 #include "eosregion.h"
 
+/*!
+ * QQmlPropertyMap's public single-argument constructor is deprecated
+ * (Qt 6.11) in favour of the protected two-argument one, which is what
+ * this thin wrapper calls.
+ */
+class WebOSWindowProperties : public QQmlPropertyMap
+{
+public:
+    explicit WebOSWindowProperties(QObject *parent = nullptr)
+        : QQmlPropertyMap(this, parent) {}
+};
+
 class WebOSQuickEvent : public QObject
 {
     Q_OBJECT
@@ -204,7 +216,7 @@ protected:
     void mouseMoveEvent(QMouseEvent *ev);
 
 private:
-    QQmlPropertyMap m_windowProperties;
+    WebOSWindowProperties m_windowProperties;
 
     /*! The properties cannot be set prior the platform window being set visible */
     QMap<QString, QString> m_pendingProperties;
@@ -231,7 +243,9 @@ private:
 private slots:
     void updatePendingWindowProperties();
     void updateWindowProperties(const QString &key, const QVariant &value);
+#ifndef NO_WEBOS_PLATFORM
     void onAddonStatusChanged(WebOSShellSurface::AddonStatus status);
+#endif
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(WebOSQuickWindow::LocationHints)

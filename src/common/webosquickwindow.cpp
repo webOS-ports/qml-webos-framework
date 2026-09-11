@@ -218,7 +218,11 @@ bool WebOSQuickWindow::handleTabletEvent(QQuickItem* item, QTabletEvent* event)
 {
     // Event grabber exists. Send it directly.
     if (m_tabletGrabberItem) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        QPointF p = m_tabletGrabberItem->mapFromScene(event->position());
+#else
         QPointF p = m_tabletGrabberItem->mapFromScene(event->posF());
+#endif
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         QTabletEvent ev(event->type(), event->pointingDevice(), p, p,
                         event->pressure(),
@@ -260,7 +264,11 @@ bool WebOSQuickWindow::handleTabletEvent(QQuickItem* item, QTabletEvent* event)
     QQuickItemPrivate *itemPrivate = QQuickItemPrivate::get(item);
 
     if (itemPrivate->flags & QQuickItem::ItemClipsChildrenToShape) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        QPointF p = item->mapFromScene(event->position());
+#else
         QPointF p = item->mapFromScene(event->posF());
+#endif
         if (!item->contains(p))
             return false;
     }
@@ -274,7 +282,11 @@ bool WebOSQuickWindow::handleTabletEvent(QQuickItem* item, QTabletEvent* event)
             return true;
     }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    QPointF p = item->mapFromScene(event->position());
+#else
     QPointF p = item->mapFromScene(event->posF());
+#endif
 
 #ifdef WEBOS_TABLET_DEBUG
     qDebug() << "tablet item finding... tablet grabber:" << m_tabletGrabberItem <<
@@ -318,20 +330,27 @@ bool WebOSQuickWindow::translateTabletToMouse(QTabletEvent* event, QQuickItem* i
 {
     Q_UNUSED(item);
     bool accepted = false;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    const QPointF localPos = event->position();
+    const QPointF globalPos = event->globalPosition();
+#else
+    const QPointF localPos = event->posF();
+    const QPointF globalPos = event->globalPosF();
+#endif
     if (event->type() == QEvent::TabletPress) {
-        QMouseEvent mouseEvent(QEvent::MouseButtonPress, event->pos(),
+        QMouseEvent mouseEvent(QEvent::MouseButtonPress, localPos, globalPos,
                                Qt::LeftButton, Qt::LeftButton, event->modifiers());
         QQuickWindow::mousePressEvent(&mouseEvent);
         accepted = mouseEvent.isAccepted();
         m_mouseGrabberItem = mouseGrabberItem();
     } else if (event->type() == QEvent::TabletRelease) {
-        QMouseEvent mouseEvent(QEvent::MouseButtonRelease, event->pos(),
+        QMouseEvent mouseEvent(QEvent::MouseButtonRelease, localPos, globalPos,
                                Qt::LeftButton, Qt::NoButton, event->modifiers());
         QQuickWindow::mouseReleaseEvent(&mouseEvent);
         accepted = mouseEvent.isAccepted();
         m_mouseGrabberItem = nullptr;
     } else if (event->type() == QEvent::TabletMove) {
-        QMouseEvent mouseEvent(QEvent::MouseMove, event->pos(),
+        QMouseEvent mouseEvent(QEvent::MouseMove, localPos, globalPos,
                                Qt::LeftButton, Qt::LeftButton, event->modifiers());
         QQuickWindow::mouseMoveEvent(&mouseEvent);
         accepted = mouseEvent.isAccepted();
@@ -339,10 +358,14 @@ bool WebOSQuickWindow::translateTabletToMouse(QTabletEvent* event, QQuickItem* i
     return accepted;
 }
 
+#ifndef NO_WEBOS_PLATFORM
 WebOSShellSurface* WebOSQuickWindow::shellSurface()
 {
-    return WebOSPlatform::instance()->shell()->shellSurfaceFor(this);
+    WebOSPlatform *platform = WebOSPlatform::instance();
+    WebOSShell *shell = platform ? platform->shell() : nullptr;
+    return shell ? shell->shellSurfaceFor(this) : nullptr;
 }
+#endif
 
 void WebOSQuickWindow::setWindowProperty(const QString& key, const QString& value)
 {
@@ -393,14 +416,17 @@ void WebOSQuickWindow::updatePendingWindowProperties()
     if (isVisible()) {
         WebOSShellSurface *ss = shellSurface();
         if (ss) {
+            // This slot runs on every visibleChanged, so guard against
+            // stacking duplicate connections (and thus duplicate signal
+            // emissions) across hide/show cycles.
             QObject::connect(ss, &WebOSShellSurface::stateAboutToChange,
-                    this, &WebOSQuickWindow::stateAboutToChange);
+                    this, &WebOSQuickWindow::stateAboutToChange, Qt::UniqueConnection);
             QObject::connect(ss, &WebOSShellSurface::locationHintChanged,
-                    this, &WebOSQuickWindow::locationHintChanged);
+                    this, &WebOSQuickWindow::locationHintChanged, Qt::UniqueConnection);
             QObject::connect(ss, &WebOSShellSurface::addonChanged,
-                    this, &WebOSQuickWindow::addonChanged);
+                    this, &WebOSQuickWindow::addonChanged, Qt::UniqueConnection);
             QObject::connect(ss, &WebOSShellSurface::addonStatusChanged,
-                    this, &WebOSQuickWindow::onAddonStatusChanged);
+                    this, &WebOSQuickWindow::onAddonStatusChanged, Qt::UniqueConnection);
 
             ss->setState(m_pendingWindowState);
 
@@ -426,11 +452,13 @@ void WebOSQuickWindow::updatePendingWindowProperties()
 
         if (m_pendingProperties.size() > 0) {
             qDebug() << "Updating pending properties";
-            QMapIterator<QString, QString> i(m_pendingProperties);
-            while (i.hasNext()) {
-                i.next();
+            // Flush and clear: leaving the entries behind would re-apply
+            // stale values on the next visibility change, overwriting any
+            // property set while the window was visible.
+            const QMap<QString, QString> pending = std::move(m_pendingProperties);
+            m_pendingProperties.clear();
+            for (auto i = pending.constBegin(); i != pending.constEnd(); ++i)
                 setWindowProperty(i.key(), i.value());
-            }
         }
     }
 #endif
@@ -494,9 +522,9 @@ QString WebOSQuickWindow::addon()
     WebOSShellSurface *ss = shellSurface();
     if (ss)
         return ss->addon();
-    return QStringLiteral();
+    return QString();
 #else
-    return QStringLiteral();
+    return QString();
 #endif
 }
 
@@ -518,14 +546,12 @@ void WebOSQuickWindow::setAddon(const QString& addon)
 #endif
 }
 
+#ifndef NO_WEBOS_PLATFORM
 void WebOSQuickWindow::onAddonStatusChanged(WebOSShellSurface::AddonStatus status)
 {
-#ifndef NO_WEBOS_PLATFORM
     emit addonStatusChanged(static_cast<AddonStatus>(status));
-#else
-    Q_UNUSED(addon);
-#endif
 }
+#endif
 
 void WebOSQuickWindow::resetAddon()
 {
@@ -535,8 +561,6 @@ void WebOSQuickWindow::resetAddon()
         ss->resetAddon();
         m_pendingAddon.clear();
     }
-#else
-    Q_UNUSED(addon);
 #endif
 }
 
