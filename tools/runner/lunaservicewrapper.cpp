@@ -91,7 +91,7 @@ void LunaServiceWrapper::regist()
     if (!ls2Name.isEmpty())
         ls2ServiceName = ls2Name;
 
-    qInfo() << "LS2_NAME:" << ls2ServiceName << ", ls2ServiceName:" << ls2ServiceName;
+    qInfo() << "LS2_NAME:" << ls2Name << ", ls2ServiceName:" << ls2ServiceName;
     if (!LSRegisterApplicationService(ls2ServiceName.toLatin1(), m_appId.toLatin1(), &lunaHandle, &lsError))
         qWarning() << "LSRegister error:" << lsError.error_code << lsError.message;
 }
@@ -100,6 +100,11 @@ void LunaServiceWrapper::attachLoop()
 {
     if (NULL != mainLoop)
         return;
+
+    if (!lunaHandle) {
+        qWarning() << "Cannot attach main loop - not registered on the bus";
+        return;
+    }
 
     LSError lsError;
     LSErrorInit(&lsError);
@@ -110,6 +115,11 @@ void LunaServiceWrapper::attachLoop()
 
 void LunaServiceWrapper::subscribe()
 {
+    if (!lunaHandle) {
+        qWarning() << "Cannot subscribe" << m_contextId << "- not registered on the bus";
+        return;
+    }
+
     QString param = "{";
     if (m_param != "")
         param += "\"serviceName\":\"" + m_param + "\",";
@@ -143,9 +153,17 @@ void LunaServiceWrapper::subscribe()
 
 void LunaServiceWrapper::cancel()
 {
-    LSError lsError;
-    LSErrorInit(&lsError);
-    LSCallCancel(lunaHandle, m_token, &lsError);
+    // lunaHandle is shared between the wrapper instances and is torn down by
+    // whichever of them is destroyed first, so it may already be gone here -
+    // e.g. in ~AppLifeCycleManager, which cancels m_bus after deleting the
+    // lifecycle wrapper. Cancelling on the hub is moot once the connection is
+    // unregistered; just reset our bookkeeping in that case.
+    if (lunaHandle && m_token != LSMESSAGE_TOKEN_INVALID) {
+        LSError lsError;
+        LSErrorInit(&lsError);
+        if (!LSCallCancel(lunaHandle, m_token, &lsError))
+            qWarning() << "LSCallCancel error:" << lsError.error_code << lsError.message;
+    }
     m_isSubscribed = false;
     m_token = LSMESSAGE_TOKEN_INVALID;
 }

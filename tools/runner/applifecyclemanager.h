@@ -23,7 +23,6 @@
 #include <QString>
 #include "lunaservicewrapper.h"
 
-QT_BEGIN_NAMESPACE
 class AppLifeCycleManager : public QObject
 {
     Q_OBJECT
@@ -50,7 +49,5 @@ private:
     LunaServiceWrapper *m_bus;
     LunaServiceWrapper *m_appLifeCycleManager;
 };
-
-QT_END_NAMESPACE
 
 #endif // APPLIFECYCLEMANAGER_H

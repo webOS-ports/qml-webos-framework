@@ -1,4 +1,7 @@
-# Copyright (c) 2014-2020 LG Electronics, Inc.
+# Copyright (c) 2026 Herman van Hazendonk <github.com@herrie.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 LG Electronics, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,10 +18,4 @@
 # SPDX-License-Identifier: Apache-2.0
 
 TEMPLATE = subdirs
-CONFIG += ordered
-SUBDIRS = runner runner-debug invoker
-
-# boosterd needs luna-service2/glib, which the desktop build does not have
-!no_webos_platform {
-    SUBDIRS += booster
-}
+SUBDIRS = securecoding eosregion

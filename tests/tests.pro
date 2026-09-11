@@ -15,4 +15,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 TEMPLATE = subdirs
-SUBDIRS = launcher
+SUBDIRS = launcher \
+    auto/framework \
+    auto/booster \
+    stress

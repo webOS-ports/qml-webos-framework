@@ -43,7 +43,10 @@ void Parallelogram::updateOffset() {
 }
 
 qreal Parallelogram::offsetAt(qreal y) const {
-    if (qFuzzyCompare(height(), 0.0f))
+    // qFuzzyCompare is documented not to work against 0 (and mixing the
+    // qreal height() with a float literal is ambiguous); qFuzzyIsNull is
+    // the correct zero test.
+    if (qFuzzyIsNull(height()))
         return 0.0f;
     return m_offset - (m_offset / height()) * y;
 }

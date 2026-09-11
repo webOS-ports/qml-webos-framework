@@ -47,12 +47,21 @@ void EosVirtualKeyboardOverlay::setTargetItem(QQuickItem* targetTextElement)
 
 void EosVirtualKeyboardOverlay::updateBoundingRectOnScene()
 {
+    if (!m_activeWindow)
+        return;
+
     QRect alignedRectOnScene = mapRectToScene(boundingRect()).toAlignedRect();
     const qreal pixelRatio = m_activeWindow->devicePixelRatio();
     alignedRectOnScene.setRect(alignedRectOnScene.x() * pixelRatio, alignedRectOnScene.y() * pixelRatio, alignedRectOnScene.width() * pixelRatio, alignedRectOnScene.height() * pixelRatio);
     if (m_targetTextElement && m_boundingRectOnScene != alignedRectOnScene) {
+        WebOSPlatform *platform = WebOSPlatform::instance();
+        WebOSInputPanelLocator *locator = platform ? platform->inputPanelLocator() : nullptr;
+        if (!locator) {
+            qWarning("No input panel locator available, cannot report keyboard overlay rect");
+            return;
+        }
         m_boundingRectOnScene = alignedRectOnScene;
-        WebOSPlatform::instance()->inputPanelLocator()->setInputPanelRect(
+        locator->setInputPanelRect(
             m_targetTextElement, m_boundingRectOnScene.x(), m_boundingRectOnScene.y(),
             int2uint(m_boundingRectOnScene.width()), int2uint(m_boundingRectOnScene.height()));
     }
@@ -60,11 +69,12 @@ void EosVirtualKeyboardOverlay::updateBoundingRectOnScene()
 
 void EosVirtualKeyboardOverlay::handleWindowChanged(const QQuickWindow* window)
 {
-    if (window && window != m_activeWindow) {
+    if (window != m_activeWindow) {
         if (m_activeWindow)
             disconnect(m_activeWindow, 0, this, 0);
         m_activeWindow = window;
-        connect(m_activeWindow, &QQuickWindow::afterRendering,
-                this, &EosVirtualKeyboardOverlay::updateBoundingRectOnScene);
+        if (m_activeWindow)
+            connect(m_activeWindow, &QQuickWindow::afterRendering,
+                    this, &EosVirtualKeyboardOverlay::updateBoundingRectOnScene);
     }
 }

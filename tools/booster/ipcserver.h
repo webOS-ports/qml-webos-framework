@@ -21,6 +21,9 @@
 
 #include <QtCore/QJsonDocument>
 #include <QtCore/QPointer>
+#include <QtCore/QMap>
+#include <QtCore/QList>
+#include <QtCore/QSharedPointer>
 #include <QtNetwork/QLocalServer>
 
 class QLocalSocket;
@@ -57,6 +60,9 @@ private slots:
     void setupConnection();
     void readSocket();
     void onDisconnected();
+
+private:
+    void processMessage(QLocalSocket *socket, const QByteArray &raw_json);
 
 private:
     struct Message { QString appId; QString mainQml; QJsonDocument params; Callback callback; };

@@ -88,11 +88,13 @@ void benchmark_message_handler(QtMsgType type, const QMessageLogContext &context
     if (!g_default_handler)
         return;
 
+    // --startup carries QDateTime::currentMSecsSinceEpoch() of the launcher
+    // (see tests/launcher/main.cpp), so the difference is already in ms.
     g_default_handler(type,
                     context,
                     QString("[%2] %1")
                     .arg(msg)
-                    .arg((QDateTime::currentMSecsSinceEpoch() - g_startup_time * 1000)));
+                    .arg(QDateTime::currentMSecsSinceEpoch() - g_startup_time));
 }
 
 // Calling Qt functions from signal handlers is a no no as per
@@ -107,7 +109,12 @@ static void signal_handler(int signum, siginfo_t *info, void *ptr)
     // Just write something so that the socket notifier
     // gets triggered
     int8_t a = 1;
-    ::write(sigtermFd[0], &a, sizeof(a));
+    // A one-byte write to a socketpair cannot meaningfully fail here, and
+    // this runs in a signal handler where nothing could be done about it
+    // anyway - but glibc marks write() warn_unused_result, so check it.
+    if (::write(sigtermFd[0], &a, sizeof(a)) != sizeof(a)) {
+        // ignored: the notifier simply won't fire
+    }
 }
 
 } // namespace
@@ -171,7 +178,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (params.type() != QVariant::Map) {
+    if (params.typeId() != QMetaType::QVariantMap) {
         params = QVariantMap();
     }
 

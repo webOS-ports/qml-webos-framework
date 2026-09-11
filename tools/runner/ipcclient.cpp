@@ -84,17 +84,26 @@ bool IpcClient::connectToServer()
 
 void IpcClient::onSocketReadyRead()
 {
-    QByteArray raw_json;
-    {
-        QByteArray block = m_socket->readAll();
-        QDataStream in (&block, QIODevice::ReadOnly);
+    if (!m_socket)
+        return;
 
-        if (in.atEnd()) {
-            qWarning("Nothing read from socket. ignoring.");
-            return;
-        }
+    // Local sockets do not preserve write boundaries; a readyRead can
+    // deliver a partial frame or several coalesced ones. QDataStream
+    // read transactions retry partial frames on the next readyRead and
+    // drain every complete frame in the buffer.
+    QDataStream in (m_socket.data());
+    for (;;) {
+        in.startTransaction();
+        QByteArray raw_json;
         in >> raw_json;
+        if (!in.commitTransaction())
+            return;
+        processMessage(raw_json);
     }
+}
+
+void IpcClient::processMessage(const QByteArray &raw_json)
+{
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     const QJsonDocument &json = QJsonDocument::fromJson(raw_json);
 #else

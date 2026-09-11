@@ -22,6 +22,7 @@
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <qopengl.h>
 #include <vector>
+#include <cstring>
 #endif
 
 class QSGTextureProvider;
@@ -83,7 +84,7 @@ private:
     void writeData(const void* data, size_t size)
     {
         if ((m_offset + size) > m_size) {
-            qWarning("Not enough space to store uniform in Uniform block, maximum %lu, used %lu, asked %lu", m_size, m_offset, size);
+            qWarning("Not enough space to store uniform in Uniform block, maximum %zu, used %zu, asked %zu", m_size, m_offset, size);
             return;
         }
         memcpy(m_buf + m_offset, data, size);
@@ -177,9 +178,9 @@ public:
         QVector4D dest;
         QVector4D sourceSubRect;
         QVector4D color;
-        int rotation;
-        float xScale;
-        float yScale;
+        int rotation = 0;
+        float xScale = 1.0f;
+        float yScale = 1.0f;
     } m_baseUniforms;
 
     virtual QSGTextureProvider* textureProvider()

@@ -1,4 +1,7 @@
-# Copyright (c) 2014-2020 LG Electronics, Inc.
+# Copyright (c) 2026 Herman van Hazendonk <github.com@herrie.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 LG Electronics, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +17,21 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-TEMPLATE = subdirs
-CONFIG += ordered
-SUBDIRS = runner runner-debug invoker
+TEMPLATE = app
+TARGET = tst_securecoding
 
-# boosterd needs luna-service2/glib, which the desktop build does not have
+QT += testlib
+QT -= gui
+
+CONFIG += console c++17 qt warn_on testcase
+CONFIG -= app_bundle
+
+INCLUDEPATH += ../../../../include
+
+SOURCES += tst_securecoding.cpp
+
 !no_webos_platform {
-    SUBDIRS += booster
+    load(webos-variables)
+    target.path = $$WEBOS_INSTALL_DATADIR/booster/tests
+    INSTALLS += target
 }
