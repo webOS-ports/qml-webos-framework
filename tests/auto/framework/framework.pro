@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Herman van Hazendonk <github.com@herrie.org>
+#
+# SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 LG Electronics, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
