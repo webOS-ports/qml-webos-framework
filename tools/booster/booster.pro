@@ -18,6 +18,7 @@ TEMPLATE = app
 TARGET = boosterd
 
 QT += network
+QT -= gui
 CONFIG += c++11
 CONFIG -= app_bundle
 

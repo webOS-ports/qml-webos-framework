@@ -38,7 +38,7 @@ class LunaService : public AbstractLunaService
 
 public:
     explicit LunaService(IpcServer *server, LaunchManager *launchManager, QObject *parent = 0);
-    void update(bool firstResponce = false);
+    void update(bool firstResponse = false);
 
 signals:
     //luna-send -i palm://com.palm.bus/signal/addmatch '{"category":"/booster","method":"processFinished"}'

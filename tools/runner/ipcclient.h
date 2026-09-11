@@ -48,6 +48,8 @@ private slots:
     void onSocketError(QLocalSocket::LocalSocketError socketError);
 
 private:
+    void processMessage(const QByteArray &raw_json);
+
     QPointer <QLocalSocket> m_socket;
 };
 

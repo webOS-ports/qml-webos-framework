@@ -49,7 +49,9 @@ int main(int argc, char *argv[])
     QString runnerCommand = parser.value(runnerCommandOption);
 
     // If started as a service, use platform's logging facility.
-    if (qgetenv("UPSTART_JOB").isEmpty() == false)
+    // UPSTART_JOB covers legacy upstart; INVOCATION_ID is set by systemd.
+    if (!qEnvironmentVariableIsEmpty("UPSTART_JOB")
+     || !qEnvironmentVariableIsEmpty("INVOCATION_ID"))
         initLogger();
 
     QLockFile l ("/run/boosterd.pid");

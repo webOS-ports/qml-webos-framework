@@ -145,13 +145,14 @@ AbstractLunaService::AbstractLunaService(QObject *parent) :
 
 AbstractLunaService::~AbstractLunaService()
 {
-    Q_ASSERT (m_sh);
+    if (!m_sh)
+        return;
 
     LSError err;
     LSErrorInit(&err);
 
-    bool res = LSUnregister(m_sh, &err);
-    Q_ASSERT_X (res, "LSUnregister", err.message);
+    if (!LSUnregister(m_sh, &err))
+        qWarning("LSUnregister failed: %s", err.message);
 }
 
 bool AbstractLunaService::registerService(const char *serviceName,
@@ -202,8 +203,8 @@ bool AbstractLunaService::registerService(const char *serviceName,
     foreach (const QMetaMethod &m, meta.signalsToForward) {
         // Cannot use SIGNAL macro here, prefixing "2" manually. See qobjectdefs.h
         const QByteArray signal =  "2" + m.methodSignature();
-        bool res = QObject::connect(this, signal, this, SLOT(onSignalEmitted(QJsonDocument)));
-        Q_ASSERT (res); // if failed, there will be a warning message from "connect" call.
+        if (!QObject::connect(this, signal, this, SLOT(onSignalEmitted(QJsonDocument))))
+            qWarning("Failed to forward signal %s to LS2", m.methodSignature().constData());
     }
 
     return true;
@@ -225,6 +226,6 @@ void AbstractLunaService::onSignalEmitted(const QJsonDocument &params)
     path << method.name();
     const QByteArray uri = "palm://" + path.join('/').toLatin1();
 
-    bool res = LSSignalSend(m_sh, uri.constData(), params.toJson().data(), &err);
-    Q_ASSERT_X (res, "LSSignalSend", err.message);
+    if (!LSSignalSend(m_sh, uri.constData(), params.toJson().data(), &err))
+        qWarning("LSSignalSend failed: %s", err.message);
 }

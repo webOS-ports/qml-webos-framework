@@ -23,6 +23,34 @@
 #include "../common/ipccommon.h"
 #include "ipcserver.h"
 
+namespace {
+
+// One message on the wire is a QDataStream-framed QByteArray holding a
+// compact JSON document (Qt >= 6) or QJsonDocument binary data (Qt 5).
+// This must stay in sync with IpcClient in tools/runner.
+QByteArray encodeMessage(const QJsonObject &message)
+{
+    QByteArray block;
+    QDataStream out (&block, QIODevice::WriteOnly);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    out << QJsonDocument(message).toJson(QJsonDocument::Compact);
+#else
+    out << QJsonDocument(message).toBinaryData();
+#endif
+    return block;
+}
+
+QJsonDocument decodeMessage(const QByteArray &raw)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    return QJsonDocument::fromJson(raw);
+#else
+    return QJsonDocument::fromBinaryData(raw);
+#endif
+}
+
+}
+
 IpcServer::IpcServer (QObject *parent) :
     QObject (parent)
 {
@@ -78,20 +106,27 @@ void IpcServer::readSocket()
 {
     QLocalSocket *socket = qobject_cast<QLocalSocket*>(sender());
     Q_ASSERT (socket);
+    if (!socket)
+        return;
 
-    QByteArray raw_json;
-    {
-        QByteArray block = socket->readAll();
-        QDataStream in (&block, QIODevice::ReadOnly);
-
-        if (in.atEnd()) {
-            qWarning("Nothing read from socket. Disconnecting client.");
-            socket->disconnectFromServer();
-            return;
-        }
+    // Local sockets do not preserve write boundaries: one readyRead can
+    // carry a partial message or several coalesced ones. Use QDataStream
+    // read transactions so a partial frame is retried on the next
+    // readyRead and every complete frame in the buffer is consumed.
+    QDataStream in (socket);
+    for (;;) {
+        in.startTransaction();
+        QByteArray raw_json;
         in >> raw_json;
+        if (!in.commitTransaction())
+            return;
+        processMessage(socket, raw_json);
     }
-    const QJsonDocument &json = QJsonDocument::fromBinaryData(raw_json);
+}
+
+void IpcServer::processMessage(QLocalSocket *socket, const QByteArray &raw_json)
+{
+    const QJsonDocument &json = decodeMessage(raw_json);
     qDebug() << "received message:" << json.toJson(QJsonDocument::Compact);
     const QJsonObject &message = json.object();
     if (message.isEmpty()) {
@@ -119,6 +154,23 @@ void IpcServer::readSocket()
             launch(message->appId, message->mainQml, message->params, message->callback);
         }
       } break;
+    case LAUNCH_REQUEST: {
+        // A launch command from a local client (e.g. the invoker tool)
+        // rather than a reply from a pooled runner. Runners only ever
+        // send REGISTER/…_REPLY, so this cannot be confused with them.
+        const QString &appId = message.value(QStringLiteral("appId")).toString();
+        const QString &mainQml = message.value(QStringLiteral("mainQml")).toString();
+        const QJsonDocument params (message.value(QStringLiteral("params")).toObject());
+        if (appId.isEmpty() || mainQml.isEmpty()) {
+            qWarning("Launch request without appId or mainQml. Ignoring.");
+            return;
+        }
+        if (m_runningApps.value(appId)) {
+            relaunch(appId, params, nullptr);
+        } else {
+            launch(appId, mainQml, params, nullptr);
+        }
+      } break;
     case LAUNCH_REPLY: {
         const qint64 processId = socket->property("pid").value<qint64>();
         const QString appId = socket->property("appId").toString();
@@ -128,6 +180,11 @@ void IpcServer::readSocket()
         if (errorCode != 0) {
             const QString &errorText = message.value(QStringLiteral("errorText")).toString();
             qWarning("QML application launch failed: %s", qPrintable(errorText));
+            // The runner never became this app; drop the bookkeeping made
+            // in launch() so a later launch of the same app id does not
+            // find a stale socket.
+            if (m_runningSockets.value(appId) == socket)
+                m_runningSockets.remove(appId);
             if (callback)
                 callback(0);
             return;
@@ -170,16 +227,12 @@ bool IpcServer::relaunch(const QString &appId, const QJsonDocument &params, cons
         Q_ASSERT (processId);
 
         qDebug("Got relaunch msg, appId: %s", qPrintable(appId));
-        QByteArray block;
-        QDataStream out {&block, QIODevice::WriteOnly};
-
         QJsonObject message;
         message.insert(QStringLiteral("header"), RELAUNCH_REQUEST);
         message.insert(QStringLiteral("params"), params.object());
         message.insert(QStringLiteral("callTime"), QDateTime::currentMSecsSinceEpoch());
-        out << QJsonDocument(message).toBinaryData();
 
-        socket->write(block);
+        socket->write(encodeMessage(message));
         socket->flush();
 
         m_launchCallbacks[processId] = callback;
@@ -202,18 +255,14 @@ void IpcServer::launch(const QString &appId, const QString &mainQml, const QJson
             Q_ASSERT (processId);
             qDebug("Launching using runner from the pool. appId: %s main: %s",
                    qPrintable(appId), qPrintable(mainQml));
-            QByteArray block;
-            QDataStream out {&block, QIODevice::WriteOnly};
-
             QJsonObject message;
             message.insert(QStringLiteral("header"), LAUNCH_REQUEST);
             message.insert(QStringLiteral("appId"), appId);
             message.insert(QStringLiteral("mainQml"), mainQml);
             message.insert(QStringLiteral("params"), params.object());
             message.insert(QStringLiteral("callTime"), QDateTime::currentMSecsSinceEpoch());
-            out << QJsonDocument(message).toBinaryData();
 
-            socket->write(block);
+            socket->write(encodeMessage(message));
             socket->flush();
 
             m_launchCallbacks[processId] = callback;

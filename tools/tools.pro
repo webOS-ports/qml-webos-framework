@@ -16,4 +16,9 @@
 
 TEMPLATE = subdirs
 CONFIG += ordered
-SUBDIRS = runner runner-debug
+SUBDIRS = runner runner-debug invoker
+
+# boosterd needs luna-service2/glib, which the desktop build does not have
+!no_webos_platform {
+    SUBDIRS += booster
+}

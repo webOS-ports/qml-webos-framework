@@ -17,4 +17,5 @@
 TEMPLATE = subdirs
 SUBDIRS = launcher \
     auto/framework \
+    auto/booster \
     stress
