@@ -18,18 +18,13 @@ TEMPLATE = app
 TARGET = invoker
 
 QT += network
+QT -= gui
 CONFIG += c++11
 CONFIG -= app_bundle
 
 CONFIG += webos
 
 SOURCES += main.cpp
-
-!no_webos_platform {
-    CONFIG += link_pkgconfig
-    PKGCONFIG += PmLogLib
-    DEFINES += USE_PMLOGLIB
-}
 
 target.path = $$WEBOS_INSTALL_BINS
 

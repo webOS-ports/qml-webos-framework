@@ -103,10 +103,11 @@ void LaunchManager::onProcessFinished(int exitCode, QProcess::ExitStatus exitSta
 {
     QProcess *process = qobject_cast<QProcess *>(sender());
     Q_ASSERT (process);
-    qint64 processId = process->pid();
+    if (!process)
+        return;
+    qint64 processId = process->processId();
     if (0 == processId)
         processId = process->property("pid").value<qint64>();
-    Q_ASSERT (processId);
 
     if (m_startingUp.remove(processId)) {
 
@@ -133,10 +134,12 @@ void LaunchManager::onProcessError(QProcess::ProcessError error)
 
     QProcess *process = qobject_cast<QProcess *>(sender());
     Q_ASSERT (process);
+    if (!process)
+        return;
 
     if (process->property("killed").toBool()) {
         // killed process reported by QProcess as crashed..
-        qDebug("Process %lld killed.", process->pid());
+        qDebug("Process %lld killed.", process->property("pid").value<qint64>());
     } else {
         qCritical("QProcess emitted error for \"%s\": %s",
                   qPrintable(process->program()), qPrintable(process->errorString()));
@@ -159,29 +162,54 @@ void LaunchManager::launchRunner()
     QProcess *process = new QProcess();
     QObject::connect(process, &QProcess::destroyed, this, &LaunchManager::onProcessDestroyed);
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    QObject::connect(process, &QProcess::finished, this, &LaunchManager::onProcessFinished);
+#else
     void (QProcess:: *finished) (int, QProcess::ExitStatus) = &QProcess::finished;
     QObject::connect(process, finished, this, &LaunchManager::onProcessFinished);
-    void (QProcess:: *error) (QProcess::ProcessError) = &QProcess::error;
-    QObject::connect(process, error, this, &LaunchManager::onProcessError);
+#endif
+    QObject::connect(process, &QProcess::errorOccurred, this, &LaunchManager::onProcessError);
 
-    process->start(m_launchRunnerCommand);
+    // QProcess::start(command) with a single command line was removed in
+    // Qt 6; split it ourselves.
+    QStringList args = QProcess::splitCommand(m_launchRunnerCommand);
+    if (args.isEmpty()) {
+        qCritical("Empty runner command, cannot pre-start a runner");
+        process->deleteLater();
+        return;
+    }
+    process->setProgram(args.takeFirst());
+    process->setArguments(args);
+    process->start();
 
     qDebug("Starting \"%s\" %s",
            qPrintable(process->program()),
            qPrintable(process->arguments().join(" ")));
 
-    Q_ASSERT (process->pid());
-    process->setProperty("pid", process->pid());
-    m_startingUp.insert(process->pid());
-    m_running.insert(process->pid(), process);
+    const qint64 processId = process->processId();
+    if (processId == 0) {
+        // Failed to fork; onProcessError will log and clean up.
+        qWarning("Runner process did not start");
+        return;
+    }
+    process->setProperty("pid", processId);
+    m_startingUp.insert(processId);
+    m_running.insert(processId, process);
 }
 
 void LaunchManager::closeTimeoutHandler()
 {
     int timeTillNextKill = 0;
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    foreach (const qint64 pid, m_closing) {
+    // Iterate over a copy: the loop removes entries from m_closing.
+    const QSet<qint64> closing = m_closing;
+    for (const qint64 pid : closing) {
         QProcess *process = m_running.value(pid);
+        if (!process) {
+            // Already gone (finished/destroyed between terminate and now).
+            m_closing.remove(pid);
+            continue;
+        }
         const qint64 timestamp = process->property("timestamp").value<qint64>();
         const int wait = (timestamp + CLOSE_TIMEOUT) - now;
         if (wait > 0) {

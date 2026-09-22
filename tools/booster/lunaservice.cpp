@@ -73,13 +73,15 @@ void LunaService::launch(const LunaServiceMessage &msg)
 
     qint64 old_pid = m_ipcServer->runningApps().value(appId);
     if (old_pid) {
-        m_ipcServer->relaunch(appId, appParams, [this, appId, msg](qint64 pid) {
+        m_ipcServer->relaunch(appId, appParams, [this, appId, old_pid, msg](qint64 pid) {
             if (pid) {
                 reply_msg(msg, appId, pid);
                 update();
             } else {
-                reply_error(msg, QStringLiteral("Reaunching QML App %1 failed.").arg(appId));
-                m_launchManager->terminate(pid);
+                reply_error(msg, QStringLiteral("Relaunching QML App %1 failed.").arg(appId));
+                // The callback reports failure with pid 0; the process to
+                // put down is the one that failed to handle the relaunch.
+                m_launchManager->terminate(old_pid);
             }
         });
         return;
@@ -100,7 +102,7 @@ void LunaService::close(const LunaServiceMessage &msg)
 {
     const QJsonDocument &params = msg.payload();
     if (!params.isObject()) {
-        reply_error(msg, QStringLiteral("Malformend JSON document."));
+        reply_error(msg, QStringLiteral("Malformed JSON document."));
         return;
     }
 
@@ -113,7 +115,7 @@ void LunaService::close(const LunaServiceMessage &msg)
 
     qint64 pid = m_ipcServer->runningApps().value(appId);
     if (pid == 0) {
-        reply_error(msg, QStringLiteral("The is no process for %1").arg(appId));
+        reply_error(msg, QStringLiteral("There is no process for %1").arg(appId));
         return;
     }
 
@@ -138,10 +140,10 @@ void LunaService::running(const LunaServiceMessage &msg)
     msg.respond(QJsonDocument(reply));
 }
 
-void LunaService::update(bool firstResponce)
+void LunaService::update(bool firstResponse)
 {
     QJsonObject reply = getRunningList();
-    if (firstResponce) {
+    if (firstResponse) {
         reply.insert(QStringLiteral("subscribed"), true);
     }
     subscribesReply(QJsonDocument(reply), "/booster/running");

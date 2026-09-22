@@ -30,8 +30,10 @@
 
 #if defined(SMACK_ENABLED)
 #include <QCryptographicHash>
+#include <algorithm>
 #include <unistd.h>
 #include <fcntl.h>
+#include <cerrno>
 #endif
 
 AppLoader::AppLoader (QObject * parent)
@@ -163,14 +165,15 @@ int AppLoader::setProcessSmackLabel(const std::string& appId) {
     int fd, err = 0;
     const std::string SMACK_APP_PREFIX = "webOS::App::";
     std::string smack_label = GetSmackLabelFromAppId(appId, SMACK_APP_PREFIX);
-    if (-1 == (fd = open("/proc/self/attr/current", O_WRONLY))) {
+    if (-1 == (fd = open("/proc/self/attr/current", O_WRONLY | O_CLOEXEC))) {
+        err = -errno;
         qWarning("SMACK is not enabled");
-        return -errno;
+        return err;
     }
 
     if (-1 == write(fd, smack_label.c_str(), smack_label.length())) {
-        qFatal("Can not set SMACK label %s", smack_label.c_str());
         err = -errno;
+        qCritical("Can not set SMACK label %s", smack_label.c_str());
     } else {
         qInfo("Set SMACK label %s", smack_label.c_str());
     }
@@ -237,13 +240,16 @@ bool AppLoader::loadApplication(const QString &appId, const QString &mainQml, co
         setLaunchParams(params);
     } else {
         QQuickItem *contentItem = qobject_cast<QQuickItem *>(m_topLevelComponent.data());
-        if (contentItem) {
-            QQuickView* qxView = new QQuickView(&m_engine, NULL);
-            m_window.clear();
-            m_window = qxView;
-            qxView->setResizeMode(QQuickView::SizeRootObjectToView);
-            qxView->setContent(mainQml, m_component.data(), contentItem);
+        if (!contentItem) {
+            qWarning("Root object of %s is neither a Window nor an Item, cannot show it",
+                     qPrintable(mainQml));
+            return false;
         }
+        QQuickView* qxView = new QQuickView(&m_engine, NULL);
+        m_window.clear();
+        m_window = qxView;
+        qxView->setResizeMode(QQuickView::SizeRootObjectToView);
+        qxView->setContent(mainQml, m_component.data(), contentItem);
         setLaunchParams(params);
         m_window->show();
     }

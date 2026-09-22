@@ -57,9 +57,12 @@ AppLifeCycleManager::~AppLifeCycleManager()
 
 void AppLifeCycleManager::init(const QString appId, const QString method, const QString params)
 {
-    Q_ASSERT(appId.size());
-    Q_ASSERT(method.size());
-    Q_ASSERT(params.size());
+    // params may legitimately be empty - main() constructs us with "" -
+    // so only the fields the subscription cannot work without are checked.
+    if (appId.isEmpty())
+        qWarning("AppLifeCycleManager created without an appId");
+    if (method.isEmpty())
+        qWarning("AppLifeCycleManager created without a lifecycle method");
 
     m_bus = new LunaServiceWrapper(serviceName + ".serverstatus",   // contextId
                                    appId,                           // appId

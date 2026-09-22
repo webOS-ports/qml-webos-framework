@@ -38,7 +38,10 @@ PunchThrough::PunchThrough(QQuickItem *parent):
     connect(static_cast<QQuickItem *>(this), SIGNAL(widthChanged()), this, SLOT(setWidthValue()));
     connect(static_cast<QQuickItem *>(this), SIGNAL(heightChanged()), this, SLOT(setHeightValue()));
 
-    setWindowPunchThroughRectFunc = (bool (*)(QScreen*, const QHash<void*, QRectF> &)) m_nativeInterface->nativeResourceForScreen("setWindowPunchThroughRectFunc", QGuiApplication::primaryScreen());
+    if (m_nativeInterface)
+        setWindowPunchThroughRectFunc = (bool (*)(QScreen*, const QHash<void*, QRectF> &)) m_nativeInterface->nativeResourceForScreen("setWindowPunchThroughRectFunc", QGuiApplication::primaryScreen());
+    else
+        qWarning() << "No platform native interface, punch-through is unavailable";
 }
 
 PunchThrough::~PunchThrough() {

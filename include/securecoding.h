@@ -17,10 +17,15 @@
 #ifndef SECURECODING_H
 #define SECURECODING_H
 
+#include <cstdint>
+#include <climits>
+
+#include <QDebug>
+
 #define checkIntMax(val) checkIntUpper(static_cast<int64_t>(val))
 #define checkIntMin(val) checkIntLower(static_cast<int64_t>(val))
 
-static int32_t uint2int(uint32_t val)
+inline int32_t uint2int(uint32_t val)
 {
     if (val > INT_MAX)
     {
@@ -31,7 +36,7 @@ static int32_t uint2int(uint32_t val)
     return static_cast<int32_t>(val);
 }
 
-static uint32_t int2uint(int32_t val)
+inline uint32_t int2uint(int32_t val)
 {
     if (val < 0)
     {
@@ -41,7 +46,7 @@ static uint32_t int2uint(int32_t val)
     return static_cast<uint32_t>(val);
 }
 
-static uint16_t int2ushort(int32_t val)
+inline uint16_t int2ushort(int32_t val)
 {
     if (val > USHRT_MAX)
     {
@@ -60,7 +65,7 @@ static uint16_t int2ushort(int32_t val)
 
 
 
-static int32_t multiplicationInt(int32_t a, int32_t b) {
+inline int32_t multiplicationInt(int32_t a, int32_t b) {
     double castToDoubleA = static_cast<double>(a);
     double castToDoubleB = static_cast<double>(b);
     double result = castToDoubleA * castToDoubleB;
@@ -74,7 +79,7 @@ static int32_t multiplicationInt(int32_t a, int32_t b) {
         return static_cast<int32_t>(result);
 }
 
-static int32_t checkIntUpper(int64_t val)
+inline int32_t checkIntUpper(int64_t val)
 {
     if (val > static_cast<int64_t>(INT_MAX))
     {
@@ -84,7 +89,7 @@ static int32_t checkIntUpper(int64_t val)
     return static_cast<int32_t>(val);
 }
 
-static int32_t checkIntLower(int64_t val)
+inline int32_t checkIntLower(int64_t val)
 {
     if(val < static_cast<int64_t>(INT_MIN))
     {
