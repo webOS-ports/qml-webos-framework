@@ -370,12 +370,12 @@ WebOSShellSurface* WebOSQuickWindow::shellSurface()
 void WebOSQuickWindow::setWindowProperty(const QString& key, const QString& value)
 {
 #ifndef NO_WEBOS_PLATFORM
+    m_properties[key] = value;
     WebOSShellSurface *ss = shellSurface();
     if (ss && isVisible()) {
         ss->setProperty(key, value);
     } else {
         qDebug() << "Window not ready, setting as pending property" << key << value;
-        m_pendingProperties[key] = value;
     }
 #else
     Q_UNUSED(key);
@@ -450,15 +450,17 @@ void WebOSQuickWindow::updatePendingWindowProperties()
             }
         }
 
-        if (m_pendingProperties.size() > 0) {
-            qDebug() << "Updating pending properties";
-            // Flush and clear: leaving the entries behind would re-apply
-            // stale values on the next visibility change, overwriting any
-            // property set while the window was visible.
-            const QMap<QString, QString> pending = std::move(m_pendingProperties);
-            m_pendingProperties.clear();
-            for (auto i = pending.constBegin(); i != pending.constEnd(); ++i)
-                setWindowProperty(i.key(), i.value());
+        // Send every property again, not only those set while hidden: a
+        // window shown again after a hide comes back to the compositor with
+        // none of them. Clearing them after the first show left a re-shown
+        // popup alert without LuneOS_window, so the shell never showed it -
+        // the second incoming call rang with no popup.
+        // m_properties holds the latest value of each, so nothing stale is
+        // sent over a property set while the window was visible.
+        if (ss && m_properties.size() > 0) {
+            qDebug() << "Updating window properties";
+            for (auto i = m_properties.constBegin(); i != m_properties.constEnd(); ++i)
+                ss->setProperty(i.key(), i.value());
         }
     }
 #endif

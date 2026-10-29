@@ -218,8 +218,11 @@ protected:
 private:
     WebOSWindowProperties m_windowProperties;
 
-    /*! The properties cannot be set prior the platform window being set visible */
-    QMap<QString, QString> m_pendingProperties;
+    /*! The latest value of every property set on the window. They cannot be
+     *  sent before the window is visible, and a window hidden and shown again
+     *  - a keepAlive one - comes back to the compositor without them, so all
+     *  of them are sent each time the window becomes visible. */
+    QMap<QString, QString> m_properties;
     LocationHints m_pendingLocationHint;
     Qt::WindowState m_pendingWindowState;
     QString m_pendingAddon;
