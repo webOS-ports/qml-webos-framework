@@ -373,7 +373,11 @@ void WebOSQuickWindow::setWindowProperty(const QString& key, const QString& valu
     m_properties[key] = value;
     WebOSShellSurface *ss = shellSurface();
     if (ss && isVisible()) {
-        ss->setProperty(key, value);
+        // Skip a value this shell surface already has; see
+        // updatePendingWindowProperties() for why the comparison is safe.
+        const QVariant sent = ss->property(key);
+        if (!sent.isValid() || sent.toString() != value)
+            ss->setProperty(key, value);
     } else {
         qDebug() << "Window not ready, setting as pending property" << key << value;
     }
@@ -457,10 +461,22 @@ void WebOSQuickWindow::updatePendingWindowProperties()
         // the second incoming call rang with no popup.
         // m_properties holds the latest value of each, so nothing stale is
         // sent over a property set while the window was visible.
+        //
+        // Skip a value the shell surface already has. ss->property() reads
+        // the shell surface's own cache of what was sent on its
+        // wl_webos_shell_surface, and the cache goes with the surface: Qt
+        // deletes the shell surface when the window is hidden
+        // (QWaylandWindow::resetSurfaceRole()) and makes a new, empty one for
+        // the next show. So a re-shown window still gets every property, and
+        // a window that stays shown does not get the same value twice.
+        // !isValid() keeps an empty value from being skipped on a new surface.
         if (ss && m_properties.size() > 0) {
             qDebug() << "Updating window properties";
-            for (auto i = m_properties.constBegin(); i != m_properties.constEnd(); ++i)
-                ss->setProperty(i.key(), i.value());
+            for (auto i = m_properties.constBegin(); i != m_properties.constEnd(); ++i) {
+                const QVariant sent = ss->property(i.key());
+                if (!sent.isValid() || sent.toString() != i.value())
+                    ss->setProperty(i.key(), i.value());
+            }
         }
     }
 #endif
