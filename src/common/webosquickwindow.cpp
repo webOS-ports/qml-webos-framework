@@ -82,6 +82,13 @@ WebOSQuickWindow::WebOSQuickWindow(QWindow *parent)
 
 WebOSQuickWindow::~WebOSQuickWindow()
 {
+    // ~QWindow destroys a window that is still visible with setVisible(false),
+    // which emits visibleChanged. By then this destructor and ~QQuickWindow
+    // have run and the object is only a QWindow, so the slot must not be
+    // called any more. ~QQuickWindow disconnects its own self-connections the
+    // same way.
+    QObject::disconnect(this, &WebOSQuickWindow::visibleChanged,
+                        this, &WebOSQuickWindow::updatePendingWindowProperties);
 }
 
 void WebOSQuickWindow::classBegin()

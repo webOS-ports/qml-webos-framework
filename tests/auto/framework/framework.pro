@@ -18,4 +18,4 @@
 # SPDX-License-Identifier: Apache-2.0
 
 TEMPLATE = subdirs
-SUBDIRS = securecoding eosregion windowproperties
+SUBDIRS = securecoding eosregion windowproperties windowdestroy
