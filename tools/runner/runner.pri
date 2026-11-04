@@ -27,12 +27,14 @@ SOURCES += \
     $$PWD/apploader.cpp \
     $$PWD/ipcclient.cpp \
     $$PWD/lunaservicewrapper.cpp \
-    $$PWD/applifecyclemanager.cpp
+    $$PWD/applifecyclemanager.cpp \
+    $$PWD/exitwatchdog.cpp
 HEADERS += \
     $$PWD/apploader.h \
     $$PWD/ipcclient.h \
     $$PWD/lunaservicewrapper.h \
-    $$PWD/applifecyclemanager.h
+    $$PWD/applifecyclemanager.h \
+    $$PWD/exitwatchdog.h
 
 qml-profiler {
     DEFINES += QMLJSDEBUGGER

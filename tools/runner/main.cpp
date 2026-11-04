@@ -27,6 +27,7 @@
 #include "ipcclient.h"
 #include "apploader.h"
 #include "applifecyclemanager.h"
+#include "exitwatchdog.h"
 
 #ifdef QMLJSDEBUGGER
 #include <QtQml/qqmldebug.h>
@@ -303,6 +304,12 @@ int main(int argc, char *argv[])
         qWarning() << "sigaction error with SIGINT";
 
     int ret = app.exec();
+
+    // All that is left is tearing the app down, which can wait for ever on
+    // work the runner does not own (see exitwatchdog.h). SAM gives a close
+    // a second before it kills the app; a card closed by the compositor gets
+    // no such limit, so give the teardown three seconds and then go.
+    armExitWatchdog(ret, std::chrono::seconds(3));
 
     if (!client.isNull())
         delete client.data();
