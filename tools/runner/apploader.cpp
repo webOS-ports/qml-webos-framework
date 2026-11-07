@@ -108,6 +108,14 @@ void AppLoader::reloadApplication(const QVariant &params)
     //      client's window should call QWindow::hide() at the 'background', and
     //      client's window should call QWindow::show() at the 'relaunch'.
     // Because of this problem, we are going to keep using QWindow::showFullScreen() at here.
+    //
+    // A relaunch with {"runHeadless": true} asks for no card, as webOS's
+    // headless apps had it (the print dialog starts the Print Manager so for
+    // each job): the app's own QML shows its window if it wants one.
+    if (QJsonValue::fromVariant(params).toObject().value(QStringLiteral("runHeadless")).toBool()) {
+        qDebug("Relaunched headless, the window is left as it is");
+        return;
+    }
     m_window->showFullScreen();
 }
 
